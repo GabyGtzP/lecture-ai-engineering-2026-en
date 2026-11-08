@@ -39,6 +39,19 @@ def test_lecture_summary():
     assert "not available yet" in tools.get_lecture_summary(99)
 
 
+def test_make_quiz_returns_question_and_answer_from_requested_lecture():
+    result = json.loads(tools.make_quiz(2))
+    lecture_terms = [term for term in tools.load_glossary() if term["lecture"] == 2]
+
+    assert result["question"].startswith("What does ")
+    assert result["answer"] in {term["definition"] for term in lecture_terms}
+    assert any(result["question"] == f"What does {term['term']} mean?" for term in lecture_terms)
+
+
+def test_make_quiz_reports_when_lecture_has_no_terms():
+    assert "No glossary terms are available" in tools.make_quiz(0)
+
+
 def test_default_question_of_lecture1_is_answerable_from_glossary():
     """The Lecture 03 agent can correctly answer the Lecture 01 default question (app.ask) using the glossary."""
     from app.ask import DEFAULT_QUESTION
