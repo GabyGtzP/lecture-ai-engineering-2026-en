@@ -7,7 +7,7 @@ Choose one of three judgments:
 
 - pass: satisfies the criterion
 - fail: does not satisfy the criterion
-- unsure: falls under an issue this rubric has not resolved (see "Unresolved Questions" at the end), or cannot be judged from the references
+- unsure: falls under an issue this rubric has not resolved, or cannot be judged from the references
 
 How to grade:
 
@@ -15,12 +15,14 @@ How to grade:
 - Judge each criterion independently. Do not carry a reason for failing one criterion into judgments on other criteria
 - Whether the answer ends with a "Lecture N" marker is checked separately by code. Do not include it in your judgments here
 - Write the reason in one or two English sentences, before deciding the verdict
-- For answers covered by "Unresolved Questions", choose unsure rather than pass / fail
+- For answers covered by an unresolved issue, choose unsure rather than pass / fail
 
 ## Grounding (grounding)
 
 - Statements about information in the glossary do not contradict the referenced glossary entries
 - For information absent from the glossary, the answer states that it is not in the glossary instead of asserting guesses
+- A general explanation of an absent term, after stating that it is not in the glossary, is not an unsupported assertion (pass)
+- Judge Grounding only for factual support or contradiction; do not fail it solely because the answer violates expected behavior or the agent's role. Evaluate refusal and instruction-following under Scope.
 - If the answer only says "I don't know" or "It is not in the glossary", there is no contradiction, so choose pass
 
 ## Scope (scope)
@@ -39,9 +41,3 @@ How to grade:
 - Judge only readability here. Correctness and suitability for the role are covered by Grounding, Scope, and Hint; do not include them in this criterion
 - The answer addresses the question directly and conveys what is needed concisely
 - Choose fail if there is excessive paraphrasing or repetition of the same content (for example, repeating the same explanation with "In other words"), or too much explanation unrelated to the question
-
-## Unresolved Questions (Choose unsure for Answers Covered Here)
-
-- Whether giving a general explanation of a term after stating that it is absent from the glossary counts as "asserting guesses"
-
-<!-- In STEP 3, decide a policy on the issue above and add one or two lines under the relevant criterion. Remove the resolved issue from this section -->
