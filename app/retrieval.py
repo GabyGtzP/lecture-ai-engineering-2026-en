@@ -143,7 +143,7 @@ def search(query: str) -> list[dict]:
         return [dict(row) for row in rows]
 
 
-def search_graph(query: str) -> dict:
+def search_graph(query: str, seeds: list[dict] | None = None) -> dict:
     """Start with vector search, then expand candidates through adjacent pages and shared terms."""
     pages = {page["page_id"]: page for page in load_pages(RAG_SOURCE)}
     graph = json.loads(RAG_GRAPH.read_text(encoding="utf-8"))
@@ -156,7 +156,9 @@ def search_graph(query: str) -> dict:
             adjacent[a].add(b)
             adjacent[b].add(a)
 
-    seeds = [hit for hit in search(query) if hit["page_id"] in pages][:min(GRAPH_START_K, GRAPH_MAX_RESULTS)]
+    if seeds is None:
+        seeds = search(query)
+    seeds = [hit for hit in seeds if hit["page_id"] in pages][:min(GRAPH_START_K, GRAPH_MAX_RESULTS)]
     seed_ids = {seed["page_id"] for seed in seeds}
     results, candidates = [], {}
     for rank, seed in enumerate(seeds):
@@ -188,6 +190,60 @@ def search_graph(query: str) -> dict:
     expanded = [candidate for _, candidate in sorted(candidates.values())]
     return {"seeds": results, "expanded": expanded[:max(0, GRAPH_MAX_RESULTS - len(results))],
             "max_hops": GRAPH_HOPS}
+
+
+def search_hybrid(query: str) -> dict:
+    """Combine vector seeds, graph expansion, and adjacent-page context."""
+    vector_results = search(query)
+    graph_results = search_graph(query, seeds=vector_results)
+    pages = {page["page_id"]: page for page in load_pages(RAG_SOURCE)}
+
+    seed_ids = {hit["page_id"] for hit in vector_results[:GRAPH_START_K]}
+    selected = {}
+
+    for seed in vector_results[:GRAPH_START_K]:
+        page_id = seed["page_id"]
+        selected[page_id] = {
+            **pages[page_id],
+            "distance": seed["distance"],
+            "hops": 0,
+            "source": "vector",
+        }
+
+    for candidate in graph_results["seeds"][GRAPH_START_K:] + graph_results["expanded"]:
+        page_id = candidate["page_id"]
+        if page_id not in selected:
+            selected[page_id] = {**candidate, "source": "graph"}
+
+    for seed_id in seed_ids:
+        seed = pages[seed_id]
+        ordered = sorted(
+            (page for page in pages.values()
+             if page["document_id"] == seed["document_id"]),
+            key=lambda page: page["page"],
+        )
+        index = next(i for i, page in enumerate(ordered) if page["page_id"] == seed_id)
+        for neighbor in ordered[max(0, index - 1):index + 2]:
+            neighbor_id = neighbor["page_id"]
+            if neighbor_id not in selected:
+                selected[neighbor_id] = {**neighbor, "hops": 1, "source": "adjacent"}
+
+    ranked = []
+    for page_id, candidate in selected.items():
+        ranked.append(candidate)
+    ranked.sort(
+        key=lambda candidate: (
+            candidate.get("source") == "adjacent",
+            candidate.get("distance", 1.0),
+            candidate["page"],
+        )
+    )
+    return {
+        "seeds": ranked[:GRAPH_START_K],
+        "expanded": ranked[GRAPH_START_K:GRAPH_MAX_RESULTS],
+        "sources": ["vector", "graph", "adjacent_pages"],
+        "max_hops": GRAPH_HOPS,
+    }
 
 
 
